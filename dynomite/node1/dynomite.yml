@@ -1,0 +1,14 @@
+dyn_o_mite:
+  datacenter: dc-a
+  rack: rack1
+  dyn_listen: dynomite1:7379
+  dyn_seeds:
+  - dynomite2:7379:rack1:dc-b:0
+  listen: 0.0.0.0:8379
+  servers:
+  - redis.local:6379:1
+  tokens: '0'
+  data_store: 0
+  stats_listen: dynomite1:22222
+  read_consistency : DC_QUORUM
+  write_consistency : DC_QUORUM

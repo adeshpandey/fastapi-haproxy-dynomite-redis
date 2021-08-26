@@ -1,0 +1,64 @@
+version: '2'
+
+networks:
+  app-tier:
+    driver: bridge
+
+services:
+  redis1:
+    hostname: redis.local
+    image: 'redis'
+    networks:
+      - app-tier
+  redis2:
+    hostname: redis1.local
+    image: 'redis'
+    networks:
+      - app-tier
+  dynomite1:
+    hostname: dynomite1
+    image: adeshpandey/dynomite
+    depends_on: 
+      - redis1
+      - redis2
+    restart: unless-stopped
+    volumes: 
+      - ./dynomite/node1/dynomite.yml:/usr/local/etc/dynomite.yml
+    ports:
+      - '7379'
+    networks: 
+      - app-tier
+    entrypoint: ["dynomite"]
+  dynomite2:
+    hostname: dynomite2
+    image: adeshpandey/dynomite
+    depends_on: 
+      - redis1
+      - redis2
+    volumes: 
+      - ./dynomite/node2/dynomite.yml:/usr/local/etc/dynomite.yml
+    ports:
+      - '7379'
+    entrypoint: ["dynomite"]
+    restart: unless-stopped
+    networks: 
+      - app-tier
+  haproxy:
+    build: .
+    hostname: haproxy
+    depends_on: 
+      - dynomite1
+      - dynomite2
+    networks: 
+      - app-tier
+  app:
+    build: ./app
+    volumes: 
+      - ./app:/app
+    depends_on: 
+      - haproxy
+    ports:
+      - "9001:9001"
+    networks: 
+      - app-tier
+

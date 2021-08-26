@@ -1,0 +1,11 @@
+dyn_o_mite:
+  listen: dynomite:8102
+  dyn_listen: dynomite:8101
+  tokens: '101134286'
+  servers:
+  - redis.local:6379:1
+  - redis1.local:6379:1
+  data_store: 0
+  mbuf_size: 16384
+  max_msgs: 300000
+  auto_eject_hosts: true
