@@ -60,6 +60,6 @@ services:
       - haproxy
     ports:
       - "9001:9001"
+    entrypoint: ["uvicorn","main:app","--host=0.0.0.0","--port=9001","--reload"]
     networks: 
       - app-tier
-
