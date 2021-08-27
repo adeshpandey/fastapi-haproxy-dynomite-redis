@@ -1,24 +1,73 @@
-from fastapi import FastAPI, Depends
-import fastapi_plugins
+from fastapi import FastAPI
 import aioredis
 import asyncio
-app = FastAPI()
+import logging
+from pydantic import BaseModel
+from logging.config import dictConfig
 
+
+class LogConfig(BaseModel):
+    """Logging configuration to be set for the server"""
+
+    LOGGER_NAME: str = "mycoolapp"
+    LOG_FORMAT: str = "%(levelprefix)s | %(asctime)s | %(message)s"
+    LOG_LEVEL: str = "DEBUG"
+
+    # Logging config
+    version = 1
+    disable_existing_loggers = False
+    formatters = {
+        "default": {
+            "()": "uvicorn.logging.DefaultFormatter",
+            "fmt": LOG_FORMAT,
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    }
+    handlers = {
+        "default": {
+            "formatter": "default",
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
+        },
+    }
+    loggers = {
+        "mycoolapp": {"handlers": ["default"], "level": LOG_LEVEL},
+    }
+
+
+dictConfig(LogConfig().dict())
+logger = logging.getLogger("mycoolapp")
+app = FastAPI()
 
 @app.on_event('startup')
 async def on_startup() -> None:
+    app.state.redis = await aioredis.create_redis_pool('redis://haproxy:6379')
+
+
+async def call_redis(obj, fname, *args) -> any:
+
     try:
-        config = fastapi_plugins.RedisSettings(
-            redis_url='redis://haproxy:6379', redis_db=None, redis_connection_timeout=2, redis_prestart_tries=5,)
-        await fastapi_plugins.redis_plugin.init_app(app, config=config)
-        await fastapi_plugins.redis_plugin.init()
+        if(args):
+            res = await getattr(obj, fname)(*args)
+        else:
+            res = await getattr(obj, fname)()
     except Exception as e:
-        raise
+        logger.info(("Exception....", e))
+        app.state.redis.close()
+        await app.state.redis.wait_closed()
+        app.state.redis = await aioredis.create_redis_pool('redis://haproxy:6379')
+        if(args):
+            res = await getattr(app.state.redis, fname)(*args)
+        else:
+            res = await getattr(app.state.redis, fname)()
+
+    return res
 
 
 @app.get("/")
 async def root(
-        cache: aioredis.Redis = Depends(fastapi_plugins.depends_redis),
 ):
-    p = await cache.ping()
-    return {"message": "Hello World %s" % p}
+    await asyncio.sleep(5)
+    p = await call_redis(app.state.redis, "get", "age")
+    await app.state.redis.set("age", 31)
+    return {"message": "Hello World", "info": p}

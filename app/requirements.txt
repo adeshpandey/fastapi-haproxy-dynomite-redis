@@ -9,7 +9,6 @@ chardet==4.0.0
 click==7.1.2
 configparser==5.0.1
 fastapi==0.63.0
-fastapi-plugins @ git+https://github.com/adeshpandey/fastapi-plugins.git@858c7d59da9d41121f898d5d486f5f52a998b66d
 h11==0.12.0
 hiredis==1.1.0
 idna==2.10
